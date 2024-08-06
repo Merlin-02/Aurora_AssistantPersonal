@@ -37,12 +37,6 @@ Este proyecto es un asistente virtual en Python con múltiples funcionalidades, 
 - **Interacciones**: El asistente puede responder a diversas interacciones como análisis de texto, búsqueda de información, y reproducción de música.
 - **Comunicación**: La comunicación con el usuario se realiza tanto a través de síntesis de voz como mediante respuestas textuales.
 
-### 4. Consideraciones y Mejoras
-- **Seguridad**: Asegurar el manejo seguro de datos personales, especialmente al almacenar configuraciones y historiales de chat.
-- **Manejo de Errores**: Incluir manejo de excepciones para mejorar la robustez del sistema.
-- **Optimización**: Optimizar funciones para evitar saturar el sistema del usuario, como la apertura de múltiples pestañas en el navegador.
-- **Accesibilidad**: Considerar opciones de accesibilidad, como diferentes voces o acentos.
-
 ## Instalación y Uso
 
 ### Requisitos
