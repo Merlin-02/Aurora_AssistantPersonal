@@ -8,6 +8,7 @@ import speech_recognition as sr
 import webbrowser
 import urllib.parse
 import pyperclip
+import requests
 import nltk
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
@@ -198,7 +199,7 @@ def get_ai_response(client, messages):
     """Obtiene la respuesta del modelo AI utilizando Groq."""
     try:
         completion = client.chat.completions.create(
-            model="gemma2-9b-it",
+            model="llama-3.1-70b-versatile",
             messages=messages,
             temperature=0.7,
             stream=True,
@@ -236,6 +237,42 @@ def youtube_music(cancion):
     webbrowser.open(video_url)
     
     return text_to_speech("Disfruta la reproducción")
+
+def get_news(topic, language='es', page_size=5):
+    url = 'https://newsapi.org/v2/everything'
+    params = {
+        'q': topic,
+        'apiKey': '18f0e9c4c74b44e998b96d4543facee0',
+        'language': language,
+        'pageSize': page_size,
+        'sortBy': 'relevancy'
+    }
+
+    response = requests.get(url, params=params)
+
+    if response.status_code == 200:
+        news = response.json().get('articles')
+        if news:
+            cadena_total = ""  # Variable para acumular todas las cadenas
+
+            for i, article in enumerate(news, start=1):
+                # Crear la cadena para esta iteración y acumularla en cadena_total
+                cadena = f"{i}. {article['title']}\nDescripción: {article['description']}\n\n"
+                cadena_total += cadena
+
+            # Imprimir o usar la cadena acumulada
+            print(cadena_total)
+            
+            # Opcional: abrir todas las URLs en el navegador
+            for article in news:
+                webbrowser.open(article['url'])
+                
+            return cadena_total  # Devolver la cadena acumulada si es necesario
+        
+        else:
+            text_to_speech("No se encontraron noticias sobre ese tema.")
+    else:
+        print("Error al realizar la solicitud:", response.status_code)
 
 def chat_with_bot():
     file_path = 'chat_history.json'
@@ -302,6 +339,11 @@ def chat_with_bot():
                 if user_input.startswith("reproduce"):
                     cancion = user_input[len("reproduce"):]
                     youtube_music(cancion)
+                    continue
+                
+                if user_input.startswith("muéstrame noticias sobre"):
+                    topic = user_input[len("muestrame noticias sobre"):]
+                    text_to_speech(get_news(topic))
                     continue
 
                 messages.append({'role': 'user', 'content': user_input})
