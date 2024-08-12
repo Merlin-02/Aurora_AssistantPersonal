@@ -9,7 +9,6 @@ import webbrowser
 import urllib.parse
 import pyperclip
 import nltk
-from fuzzywuzzy import process
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
 from collections import Counter
@@ -40,15 +39,6 @@ IDIOMA_CODIGOS = {
     'chino': 'zh',
     'ruso': 'ru',
     'árabe': 'ar'
-}
-
-# Define las acciones y sus posibles frases clave
-acciones = {
-    'buscar_informacion': ['busca', 'buscar', 'encuentra', 'investiga'],
-    'analizar_texto': ['analiza este texto', 'revisa el texto', 'analiza texto'],
-    'reproducir_musica': ['reproduce', 'escucha', 'pon', 'reproduce música'],
-    'obtener_noticias': ['muéstrame noticias sobre', 'dame noticias sobre', 'noticias sobre'],
-    'conversemos': ['hablemos sobre', 'platicame sobre','oye', 'qué opinas','ayudame']
 }
 
 
@@ -260,34 +250,18 @@ def obtener_ultimas_noticias(tema):
     
     cadena_total = ""
     
-    # Mostrar noticias (limitado a 7 resultados)
-    for i, noticia in enumerate(resultados[:7]):  # Limitar a los primeros 7 resultados
+    # Mostrar noticias
+    for noticia in resultados:
         # Crear la cadena para esta iteración y acumularla en cadena_total
-        cadena = f"{i}. {noticia.get('title', 'No disponible')}\n{noticia.get('media', 'No disponible')}\n{noticia.get('desc', 'No disponible')}\n\n"
+        cadena = f"{noticia.get('title', 'No disponible')}\n{noticia.get('media', 'No disponible')}\n{noticia.get('desc', 'No disponible')}\n\n"
         cadena_total += cadena
     
     print(cadena_total)
     
-    for noticia in resultados[:7]:  # Limitar a los primeros 7 resultados
+    for noticia in resultados:
         webbrowser.open(noticia.get('link'))
         
     return cadena_total
-
-def determinar_accion(entrada):
-    """Determina la acción más probable basada en la entrada del usuario."""
-    entrada = entrada.lower()
-    mejor_puntuacion = 0
-    accion_elegida = None
-
-    for accion, frases in acciones.items():
-        for frase in frases:
-            puntuacion = process.extractOne(entrada, [frase])[1]
-            if puntuacion > mejor_puntuacion:
-                mejor_puntuacion = puntuacion
-                accion_elegida = accion
-
-    return accion_elegida
-
 
 def chat_with_bot():
     file_path = 'chat_history.json'
@@ -322,7 +296,9 @@ def chat_with_bot():
             if user_input is None:
                 continue
 
+            # Comprobar si la frase de activación o el nombre del asistente están en la entrada del usuario
             if en_modo_respuesta or (activation_phrase in user_input.lower() or assistant_name in user_input.lower()):
+                # Eliminar la frase de activación y el nombre del asistente de la entrada del usuario
                 user_input = user_input.lower().replace(activation_phrase, "").replace(assistant_name, "").strip()
 
                 if user_input.lower() in ['salir', 'exit', 'adios', 'adiós']:
@@ -331,11 +307,10 @@ def chat_with_bot():
                     save_history(file_path, messages)
                     break
                 
-                accion = determinar_accion(user_input)
-                
-                if accion == 'buscar_informacion':
-                    tema = user_input.split('sobre')[-1].strip()
+                if user_input.startswith("busca") or user_input.startswith("buscar"):
+                    tema = user_input[len("buscar"):]
                     text_to_speech(f"Buscando información sobre {tema}", lang=lang, slow=slow_speech)
+                    # Asegurando que la búsqueda en navegador se ejecute primero
                     buscar_informacion(tema, client, lang)
                     resumen = buscar_informacion(tema, client, lang)
                     print(f"Resumen sobre {tema}: {resumen}")
@@ -343,31 +318,30 @@ def chat_with_bot():
                     en_modo_respuesta = False
                     continue
 
-                if accion == 'analizar_texto':
+                if user_input.startswith("analiza este texto"):
                     texto_analizado = analizar_texto_portapapeles()
                     text_to_speech(f"Texto analizado: {texto_analizado}", lang=lang, slow=slow_speech)
                     print(f"Texto analizado: {texto_analizado}")
                     en_modo_respuesta = False
                     continue
                 
-                if accion == 'reproducir_musica':
-                    cancion = user_input.split('música')[-1].strip()
+                if user_input.startswith("reproduce"):
+                    cancion = user_input[len("reproduce"):]
                     youtube_music(cancion)
                     continue
                 
-                if accion == 'obtener_noticias':
-                    topic = user_input.split('sobre')[-1].strip()
-                    noticias = obtener_ultimas_noticias(topic)
-                    text_to_speech(noticias, lang=lang, slow=slow_speech)
+                if user_input.startswith("muéstrame noticias sobre"):
+                    topic = user_input[len("muestrame noticias sobre"):]
+                    text_to_speech(obtener_ultimas_noticias(topic))
                     continue
-                
-                if accion == 'conversemos':
-                    messages.append({'role': 'user', 'content': user_input})
-                    bot_message = get_ai_response(client, messages)
-                    print(f"{assistant_name.capitalize()}:", bot_message)
-                    text_to_speech(bot_message, lang=lang, slow=slow_speech)
-                    messages.append({'role': 'assistant', 'content': bot_message})
-                    en_modo_respuesta = es_pregunta(bot_message)
+
+                messages.append({'role': 'user', 'content': user_input})
+                bot_message = get_ai_response(client, messages)
+                print(f"{assistant_name.capitalize()}:", bot_message)
+                text_to_speech(bot_message, lang=lang, slow=slow_speech)
+                messages.append({'role': 'assistant', 'content': bot_message})
+
+                en_modo_respuesta = es_pregunta(bot_message)
             else:
                 print(f"No se detectó la frase de activación '{activation_phrase}' o el nombre '{assistant_name}'.")
                 en_modo_respuesta = False
