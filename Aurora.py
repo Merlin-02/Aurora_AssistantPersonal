@@ -47,7 +47,8 @@ acciones = {
     'buscar_informacion': ['busca', 'buscar', 'encuentra', 'investiga'],
     'analizar_texto': ['analiza este texto', 'revisa el texto', 'analiza texto'],
     'reproducir_musica': ['reproduce', 'escucha', 'pon', 'reproduce música'],
-    'obtener_noticias': ['muéstrame noticias sobre', 'dame noticias sobre', 'noticias sobre']
+    'obtener_noticias': ['muéstrame noticias sobre', 'dame noticias sobre', 'noticias sobre'],
+    'conversemos': ['hablemos sobre', 'platicame sobre','oye', 'qué opinas','ayudame']
 }
 
 
@@ -259,15 +260,15 @@ def obtener_ultimas_noticias(tema):
     
     cadena_total = ""
     
-    # Mostrar noticias
-    for noticia in resultados:
+    # Mostrar noticias (limitado a 7 resultados)
+    for i, noticia in enumerate(resultados[:7]):  # Limitar a los primeros 7 resultados
         # Crear la cadena para esta iteración y acumularla en cadena_total
-        cadena = f"{noticia.get('title', 'No disponible')}\n{noticia.get('media', 'No disponible')}\n{noticia.get('desc', 'No disponible')}\n\n"
+        cadena = f"{i}. {noticia.get('title', 'No disponible')}\n{noticia.get('media', 'No disponible')}\n{noticia.get('desc', 'No disponible')}\n\n"
         cadena_total += cadena
     
     print(cadena_total)
     
-    for noticia in resultados:
+    for noticia in resultados[:7]:  # Limitar a los primeros 7 resultados
         webbrowser.open(noticia.get('link'))
         
     return cadena_total
@@ -275,7 +276,6 @@ def obtener_ultimas_noticias(tema):
 def determinar_accion(entrada):
     """Determina la acción más probable basada en la entrada del usuario."""
     entrada = entrada.lower()
-    mejor_coincidencia = None
     mejor_puntuacion = 0
     accion_elegida = None
 
@@ -284,7 +284,6 @@ def determinar_accion(entrada):
             puntuacion = process.extractOne(entrada, [frase])[1]
             if puntuacion > mejor_puntuacion:
                 mejor_puntuacion = puntuacion
-                mejor_coincidencia = frase
                 accion_elegida = accion
 
     return accion_elegida
@@ -361,14 +360,14 @@ def chat_with_bot():
                     noticias = obtener_ultimas_noticias(topic)
                     text_to_speech(noticias, lang=lang, slow=slow_speech)
                     continue
-
-                messages.append({'role': 'user', 'content': user_input})
-                bot_message = get_ai_response(client, messages)
-                print(f"{assistant_name.capitalize()}:", bot_message)
-                text_to_speech(bot_message, lang=lang, slow=slow_speech)
-                messages.append({'role': 'assistant', 'content': bot_message})
-
-                en_modo_respuesta = es_pregunta(bot_message)
+                
+                if accion == 'conversemos':
+                    messages.append({'role': 'user', 'content': user_input})
+                    bot_message = get_ai_response(client, messages)
+                    print(f"{assistant_name.capitalize()}:", bot_message)
+                    text_to_speech(bot_message, lang=lang, slow=slow_speech)
+                    messages.append({'role': 'assistant', 'content': bot_message})
+                    en_modo_respuesta = es_pregunta(bot_message)
             else:
                 print(f"No se detectó la frase de activación '{activation_phrase}' o el nombre '{assistant_name}'.")
                 en_modo_respuesta = False
