@@ -8,11 +8,12 @@ import speech_recognition as sr
 import webbrowser
 import urllib.parse
 import pyperclip
-import requests
 import nltk
+from fuzzywuzzy import process
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
 from collections import Counter
+from GoogleNews import GoogleNews
 from sumy.parsers.plaintext import PlaintextParser
 from sumy.nlp.tokenizers import Tokenizer
 from sumy.summarizers.lsa import LsaSummarizer
@@ -25,6 +26,9 @@ CONFIG_FILE_PATH = 'config.json'
 nltk.download('punkt')
 nltk.download('stopwords')
 
+# Inicializar GoogleNews
+googlenews = GoogleNews()
+
 IDIOMA_CODIGOS = {
     'español': 'es',
     'inglés': 'en',
@@ -36,6 +40,14 @@ IDIOMA_CODIGOS = {
     'chino': 'zh',
     'ruso': 'ru',
     'árabe': 'ar'
+}
+
+# Define las acciones y sus posibles frases clave
+acciones = {
+    'buscar_informacion': ['busca', 'buscar', 'encuentra', 'investiga'],
+    'analizar_texto': ['analiza este texto', 'revisa el texto', 'analiza texto'],
+    'reproducir_musica': ['reproduce', 'escucha', 'pon', 'reproduce música'],
+    'obtener_noticias': ['muéstrame noticias sobre', 'dame noticias sobre', 'noticias sobre']
 }
 
 
@@ -238,41 +250,45 @@ def youtube_music(cancion):
     
     return text_to_speech("Disfruta la reproducción")
 
-def get_news(topic, language='es', page_size=5):
-    url = 'https://newsapi.org/v2/everything'
-    params = {
-        'q': topic,
-        'apiKey': '18f0e9c4c74b44e998b96d4543facee0',
-        'language': language,
-        'pageSize': page_size,
-        'sortBy': 'relevancy'
-    }
-
-    response = requests.get(url, params=params)
-
-    if response.status_code == 200:
-        news = response.json().get('articles')
-        if news:
-            cadena_total = ""  # Variable para acumular todas las cadenas
-
-            for i, article in enumerate(news, start=1):
-                # Crear la cadena para esta iteración y acumularla en cadena_total
-                cadena = f"{i}. {article['title']}\nDescripción: {article['description']}\n\n"
-                cadena_total += cadena
-
-            # Imprimir o usar la cadena acumulada
-            print(cadena_total)
-            
-            # Opcional: abrir todas las URLs en el navegador
-            for article in news:
-                webbrowser.open(article['url'])
-                
-            return cadena_total  # Devolver la cadena acumulada si es necesario
+def obtener_ultimas_noticias(tema):
+    # Buscar noticias sobre el tema
+    googlenews.search(tema)
+    
+    # Obtener resultados de búsqueda
+    resultados = googlenews.results(sort=True)
+    
+    cadena_total = ""
+    
+    # Mostrar noticias
+    for noticia in resultados:
+        # Crear la cadena para esta iteración y acumularla en cadena_total
+        cadena = f"{noticia.get('title', 'No disponible')}\n{noticia.get('media', 'No disponible')}\n{noticia.get('desc', 'No disponible')}\n\n"
+        cadena_total += cadena
+    
+    print(cadena_total)
+    
+    for noticia in resultados:
+        webbrowser.open(noticia.get('link'))
         
-        else:
-            text_to_speech("No se encontraron noticias sobre ese tema.")
-    else:
-        print("Error al realizar la solicitud:", response.status_code)
+    return cadena_total
+
+def determinar_accion(entrada):
+    """Determina la acción más probable basada en la entrada del usuario."""
+    entrada = entrada.lower()
+    mejor_coincidencia = None
+    mejor_puntuacion = 0
+    accion_elegida = None
+
+    for accion, frases in acciones.items():
+        for frase in frases:
+            puntuacion = process.extractOne(entrada, [frase])[1]
+            if puntuacion > mejor_puntuacion:
+                mejor_puntuacion = puntuacion
+                mejor_coincidencia = frase
+                accion_elegida = accion
+
+    return accion_elegida
+
 
 def chat_with_bot():
     file_path = 'chat_history.json'
@@ -307,9 +323,7 @@ def chat_with_bot():
             if user_input is None:
                 continue
 
-            # Comprobar si la frase de activación o el nombre del asistente están en la entrada del usuario
             if en_modo_respuesta or (activation_phrase in user_input.lower() or assistant_name in user_input.lower()):
-                # Eliminar la frase de activación y el nombre del asistente de la entrada del usuario
                 user_input = user_input.lower().replace(activation_phrase, "").replace(assistant_name, "").strip()
 
                 if user_input.lower() in ['salir', 'exit', 'adios', 'adiós']:
@@ -318,10 +332,11 @@ def chat_with_bot():
                     save_history(file_path, messages)
                     break
                 
-                if user_input.startswith("busca") or user_input.startswith("buscar"):
-                    tema = user_input[len("buscar"):]
+                accion = determinar_accion(user_input)
+                
+                if accion == 'buscar_informacion':
+                    tema = user_input.split('sobre')[-1].strip()
                     text_to_speech(f"Buscando información sobre {tema}", lang=lang, slow=slow_speech)
-                    # Asegurando que la búsqueda en navegador se ejecute primero
                     buscar_informacion(tema, client, lang)
                     resumen = buscar_informacion(tema, client, lang)
                     print(f"Resumen sobre {tema}: {resumen}")
@@ -329,21 +344,22 @@ def chat_with_bot():
                     en_modo_respuesta = False
                     continue
 
-                if user_input.startswith("analiza este texto"):
+                if accion == 'analizar_texto':
                     texto_analizado = analizar_texto_portapapeles()
                     text_to_speech(f"Texto analizado: {texto_analizado}", lang=lang, slow=slow_speech)
                     print(f"Texto analizado: {texto_analizado}")
                     en_modo_respuesta = False
                     continue
                 
-                if user_input.startswith("reproduce"):
-                    cancion = user_input[len("reproduce"):]
+                if accion == 'reproducir_musica':
+                    cancion = user_input.split('música')[-1].strip()
                     youtube_music(cancion)
                     continue
                 
-                if user_input.startswith("muéstrame noticias sobre"):
-                    topic = user_input[len("muestrame noticias sobre"):]
-                    text_to_speech(get_news(topic))
+                if accion == 'obtener_noticias':
+                    topic = user_input.split('sobre')[-1].strip()
+                    noticias = obtener_ultimas_noticias(topic)
+                    text_to_speech(noticias, lang=lang, slow=slow_speech)
                     continue
 
                 messages.append({'role': 'user', 'content': user_input})
