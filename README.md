@@ -47,4 +47,4 @@ Este proyecto es un asistente virtual en Python con múltiples funcionalidades, 
    ```bash
    git clone https://github.com/tuusuario/nombre-repositorio.git
    cd nombre-repositorio
-   pip install groq gtts playsound SpeechRecognition pyperclip nltk sumy youtubesearchpython
+   pip install groq gtts playsound SpeechRecognition pyperclip nltk sumy youtubesearchpython requests
