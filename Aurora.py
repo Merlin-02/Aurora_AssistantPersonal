@@ -265,7 +265,7 @@ def obtener_ultimas_noticias(tema):
 
 def chat_with_bot():
     file_path = 'chat_history.json'
-    api_key = "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"
+    api_key = "TU_API_DE_GROQ"
 
     client = groq.Groq(api_key=api_key)
     messages = load_history(file_path)
