@@ -1,0 +1,12 @@
+groq
+gTTS
+playsound
+tempfile
+speechrecognition
+webbrowser
+urllib3
+pyperclip
+nltk
+GoogleNews
+sumy
+youtubesearchpython
