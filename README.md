@@ -19,6 +19,15 @@ Este proyecto es un asistente virtual en Python con múltiples funcionalidades, 
 - Bibliotecas requeridas 
 - Clave API de Groq
 
+## Instalación
+
+Para el uso adecuado de este proyecto descarga y ejecula la instalación de los requisitos.
+
+```
+pip install -r requirements.txt
+```
+
+
 ## Uso
 Ejecuta el script principal:
 ```
